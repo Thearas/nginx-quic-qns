@@ -2,7 +2,7 @@ FROM martenseemann/quic-network-simulator-endpoint:latest AS builder
 
 ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update
-RUN apt-get install -qy mercurial build-essential libpcre3 libpcre3-dev zlib1g zlib1g-dev curl git cmake ninja-build golang gnutls-bin iptables
+RUN apt-get install -qy libssl-dev libcrypt-dev mercurial build-essential libpcre3 libpcre3-dev zlib1g zlib1g-dev curl git cmake ninja-build golang gnutls-bin iptables
 
 RUN useradd nginx
 
@@ -11,7 +11,7 @@ RUN git clone --depth=1 https://github.com/google/boringssl.git
 RUN  cd boringssl  && \
   mkdir build && \
   cd build && \
-  cmake -GNinja .. && \
+  cmake -GNinja -DCMAKE_BUILD_TYPE=Release .. && \
   ninja && \
   cd ../.. && \
   mkdir -p boringssl/.openssl/lib && \
@@ -42,13 +42,9 @@ RUN cd nginx-quic && \
     --user=nginx \
     --group=nginx \
     --with-compat \
-    --with-debug \
-    --with-http_ssl_module \
-    --with-http_v2_module \
-    --with-stream_quic_module \
-    --with-http_v3_module \
-    --with-cc-opt='-I/boringssl/include -O0 -fno-common -fno-omit-frame-pointer -DNGX_QUIC_DRAFT_VERSION=29 -DNGX_HTTP_V3_HQ=1' \
-    --with-ld-opt='-L/boringssl/build/ssl -L/boringssl/build/crypto'
+    --with-debug --with-http_v3_module --with-threads --with-http_auth_request_module --with-cpu-opt=generic --with-stream_ssl_preread_module --with-file-aio --with-http_ssl_module --with-poll_module --with-select_module --with-http_v2_module --with-stream_quic_module --with-stream=dynamic --with-stream_ssl_module --with-http_slice_module --with-http_addition_module --with-http_mp4_module --with-http_gzip_static_module --with-http_gunzip_module --with-http_random_index_module --with-http_realip_module --with-http_secure_link_module --with-http_stub_status_module --with-http_sub_module --with-mail=dynamic --with-mail_ssl_module \
+    --with-cc-opt='-I/boringssl/include -g -O2 -fno-common -fno-omit-frame-pointer -DNGX_QUIC_DRAFT_VERSION=29 -DNGX_HTTP_V3_HQ=1' \
+    --with-ld-opt='-L/boringssl/build/ssl -L/boringssl/build/crypto -flto'
 
 RUN cd nginx-quic && make -j$(nproc)
 RUN cd nginx-quic && make install
